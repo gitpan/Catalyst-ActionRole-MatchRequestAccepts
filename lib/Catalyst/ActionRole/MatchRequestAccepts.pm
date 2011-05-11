@@ -1,11 +1,11 @@
 package Catalyst::ActionRole::MatchRequestAccepts;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use 5.008008;
 use Moose::Role;
 use Perl6::Junction 'all', 'any';
-use HTTP::Headers::Util ();
+use HTTP::Headers::Util 'split_header_words';
 use namespace::autoclean;
 
 requires 'attributes';
@@ -21,9 +21,8 @@ sub _http_accept {
 
 sub _split_accept_header {
   my ($self, $accept_header) = @_;
-
   my %types;
-  foreach my $pair ( HTTP::Headers::Util::split_header_words($accept_header) ) {
+  foreach my $pair (split_header_word $accept_header) {
     my ($type) = @{$pair}[0];
     next if $types{$type};
     $types{$type}=1;
@@ -59,12 +58,6 @@ around 'match', sub {
   my ($orig, $self, $ctx) = @_;
   my @attr_accepts = $self->_resolve_accept_attr;
   my @hdr_accepts = $self->_resolve_http_accept($ctx);
-
-  $ctx->debug && 
-  $ctx->log->_dump({
-    name => $self->name,
-    attr => \@attr_accepts,
-    hdr => \@hdr_accepts});
 
   if(@attr_accepts) {
     if(all(@attr_accepts) eq any(@hdr_accepts)) {
@@ -106,7 +99,7 @@ Catalyst::ActionRole::MatchRequestAccepts - Dispatch actions based on HTTP Accep
 =head1 DESCRIPTION
 
 Lets you specify a match for the HTTP C<Accept> Header, which is provided by
-the L<Catalyst> C<$ctx->request->headers> object.  You might wish to instead
+the L<Catalyst> C<< $ctx->request->headers >> object.  You might wish to instead
 look at L<Catalyst::Action::REST> if you are doing complex applications that
 match different incoming request types, but if you are very fussy about how
 your actions match, or if you are doing some simple ajaxy bits you might like
@@ -115,14 +108,14 @@ to use this instead of a full on package (like L<Catalyst::Action::REST> is.)
 Currently the match performed is a pure equalty, no attempt to guess or infer
 matches based on similarity are done.  If you need to match several variations
 you can specify all the variations with multiple attribute declarations.  Right
-now we don't support expression based matching, such as C<text/*>, although 
+now we don't support expression based matching, such as C<text/*>, although
 adding such would probably not be very hard (although I don't want to make the
 logic here slow down our dispatch matching too much).
 
 Please note that if you specify multiple C<Accept> attributes on a single
 action, those will be matched via an OR condition and not an AND condition.  In
 other words we short circuit match the first action with at least one of the
-C<Accept> values appearing in the requested HTTP headers.  I think this is 
+C<Accept> values appearing in the requested HTTP headers.  I think this is
 correct since I imagine the purpose of multiple C<Accept> attributes would be
 to match several acceptable variations of a given type, not to match any of
 several unrelated types.  However if you have a use case for this please let
@@ -131,13 +124,13 @@ me know.
 If an action consumes this role, but no C<Accept> attributes are found, the
 action will simple accept all types.
 
-For debugging purposes, if the L<Catalyst> debug flag is enabled, you can 
+For debugging purposes, if the L<Catalyst> debug flag is enabled, you can
 override the HTTP Accept header with the C<http-accept> query parameter.  This
 makes it easy to force detect in testing or in your browser.  This feature is
 NOT available when the debug flag is off.
 
-Also, as usual you can specify attributes and information in the C<Controller>
-configuration:
+Also, as usual you can specify attributes and information in th configuration
+of your L<Catalyst::Controller> subclass:
 
     __PACKAGE__->config(
       action_roles => ['MatchRequestAccepts'],
@@ -151,7 +144,7 @@ The following example uses L<Catalyst> chaining to match one of two different
 types of C<Accept> headers, and to return the correct HTTP error message if
 nothing is matched correctly:
 
-    package TestApp::Controller::Chained;
+    package MyApp::Web::Controller::Chained;
 
     use Moose;
     use namespace::autoclean;
@@ -166,26 +159,33 @@ nothing is matched correctly:
 
     sub root : Chained('/') PathPrefix CaptureArgs(0) {}
 
-      sub text_html : Chained('root') PathPart('') Accept('text/html') Args(0) {
+      sub text_html
+        : Chained('root') PathPart('') Accept('text/html') Args(0)
+      {
         my ($self, $ctx) = @_;
         $ctx->response->body('text_html');
       }
-      
-      sub json : Chained('root') PathPart('') Accept('application/json') Args(0) {
+
+      sub json
+        : Chained('root') PathPart('') Accept('application/json') Args(0)
+      {
         my ($self, $ctx) = @_;
         $ctx->response->body('json');
       }
 
-      sub not_accepted : Chained('root') PathPart('') Args {
+      sub not_accepted
+        : Chained('root') PathPart('') Args
+      {
         my ($self, $ctx) = @_;
         $ctx->response->status(406);
         $ctx->response->body('error_not_accepted');
-     }
+      }
 
     __PACKAGE__->meta->make_immutable;
 
-In the given example, a GET request to C<'/chained'> will match for C<Accept> values
-of HTML and JSON, and will return a status 406 error to all other requests.
+In the given example, a C<GET> request to C<http://www.myapp.com/chained> will
+match for C<Accept> values of HTML and JSON, and will return a status 406 error
+to all other requests.
 
 =head1 AUTHOR
 
@@ -203,13 +203,13 @@ which let me parse HTTP Accept lines.
 =head1 SEE ALSO
 
 L<Catalyst::ActionRole::MatchRequestMethod>, L<Catalyst::Action::REST>,
-L<Catalyst>, L<Catalyst::Controller::ActionRole>
+L<Catalyst>, L<Catalyst::Controller::ActionRole>, L<Moose>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2011, John Napiorkowski L<email:jjnapiork@cpan.org> 
+Copyright 2011, John Napiorkowski L<email:jjnapiork@cpan.org>
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
+This library is free software; you can redistribute it and/or modify it under
+the same terms as Perl itself.
 
 =cut
