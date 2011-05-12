@@ -34,4 +34,4 @@ resources:
   homepage: http://search.cpan.org/dist/Catalyst-ActionRole-MatchRequestAccepts/
   license: http://dev.perl.org/licenses/
   repository: git://github.com/jjn1056/Catalyst-ActionRole-MatchRequestAccepts.git
-version: 0.04
+version: 0.05
